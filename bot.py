@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# Token = 8042917833:AAHBX8lEdlsbmw9ma9PzQkw225nudBr5uug
+
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 import logging
