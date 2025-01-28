@@ -22,90 +22,66 @@
 
 # Token = 8042917833:AAHBX8lEdlsbmw9ma9PzQkw225nudBr5uug
 
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
 import logging
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
-# Включаем ведение логов
+# Установите уровень логирования
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# Список ID администратора
-ADMIN_IDS = {5764625744}  # Замените это на свои реальные ID администраторов
-SUPPORT_CHAT_ID = -2396512980  # Замените на ID вашей группы поддержки
+# Замените токен на ваш
+TELEGRAM_TOKEN = 'ваш_токен_бота'
+OWNER_ID = 123456789  # Замените на ID владельца
+
+# Инициализация переменной баланса
+balance = 0
 
 def start(update: Update, context: CallbackContext) -> None:
-    """Отправляет приветственное сообщение пользователю."""
-    user_id = update.message.from_user.id
-    if user_id in ADMIN_IDS:
-        greeting = admin_greet(user_id)
+    if update.message.from_user.id == OWNER_ID:
+        update.message.reply_text('Приветствую вас, создатель! Рад быть вашим помощником.')
     else:
-        greeting = 'Привет! Я бот, который помогает управлять балансом и поддержкой. Если у вас есть вопросы, вы можете обратиться в нашу группу поддержки!'
-    
-    update.message.reply_text(greeting)
+        update.message.reply_text('Привет! Я бот для управления балансом. Используйте /balance для показа баланса, '
+                                  'или /support, чтобы обратиться в службу поддержки.')
 
-def admin_greet(user_id: int) -> str:
-    """Приветственное сообщение для администратора."""
-    return (f'👋 Привет, администратор! Вы успешно вошли в систему управления ботом.\n\n' 
-            f'💼 Вот некоторые команды, которые вы можете использовать:\n' 
-            f'/set_balance <user_id> <баланс> - Установить баланс пользователя.\n' 
-            f'/get_balance <user_id> - Узнать баланс пользователя.\n' 
-            f'/support - Обратиться в группу поддержки.\n')
+def balance_command(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text(f'Ваш баланс: {balance} рублей.')
 
 def set_balance(update: Update, context: CallbackContext) -> None:
-    """Устанавливает баланс пользователя."""
-    if not update.message.from_user.id in ADMIN_IDS:
-        update.message.reply_text('У вас нет прав для выполнения этой команды!')
-        return
-        
-    if len(context.args) != 2:
-        update.message.reply_text('Использование: /set_balance <user_id> <баланс>')
-        return
+    global balance
+    if update.message.from_user.id == OWNER_ID:
+        if context.args:
+            try:
+                new_balance = int(context.args[0])
+                balance = new_balance
+                update.message.reply_text(f'Баланс успешно установлен на {balance} рублей.')
+            except ValueError:
+                update.message.reply_text('Пожалуйста, введите корректное число.')
+        else:
+            update.message.reply_text('Введите новое значение баланса, например: /set_balance 100')
+    else:
+        update.message.reply_text('У вас нет прав для изменения баланса.')
 
-    user_id, balance = context.args
-    # Здесь вы можете добавить код для обновления баланса пользователя в базе данных
-    update.message.reply_text(f'Баланс пользователя {user_id} установлен на {balance}.')
-
-def get_balance(update: Update, context: CallbackContext) -> None:
-    """Получает баланс пользователя."""
-    if not update.message.from_user.id in ADMIN_IDS:
-        update.message.reply_text('У вас нет прав для выполнения этой команды!')
-        return
-    
-    if not context.args:
-        update.message.reply_text('Использование: /get_balance <user_id>')
-        return
-    
-    user_id = context.args[0]
-    # Здесь вы можете добавить код для получения баланса пользователя из базы данных
-    balance = 100  # Заглушка, замените на фактическое значение
-    update.message.reply_text(f'Баланс пользователя {user_id}: {balance}.')
-
-def support(update: Update, context: CallbackContext) -> None:
-    """Отправляет сообщение в группу поддержки."""
-    user_id = update.message.from_user.id
-    if user_id not in ADMIN_IDS:
-        update.message.reply_text('Вы можете обратиться в поддержку, написав сообщение в группу поддержки.')
-        return
-
-    update.message.reply_text('Отправляю ваш вопрос в группу поддержки...')
-    message_text = " ".join(context.args) if context.args else "Пользователь не указал вопрос."
-    context.bot.send_message(chat_id=SUPPORT_CHAT_ID, text=f'Запрос от администратора: {message_text}')
-    update.message.reply_text('Ваш запрос был отправлен в группу поддержки.')
+def help_command(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Доступные команды:\n/start - запустить бота\n/balance - показать баланс\n/set_balance [номер] - установить баланс\n/help - помощь')
 
 def main() -> None:
-    """Запуск бота."""
-    updater = Updater("8042917833:AAHBX8lEdlsbmw9ma9PzQkw225nudBr5uug")  # Замените YOUR_API_TOKEN на ваш токен
+    updater = Updater(TELEGRAM_TOKEN)
+    
+    # Получаем диспетчер для регистрации обработчиков
     dispatcher = updater.dispatcher
-
-    # Добавляем обработчики команд
+    
+    # Регистрация обработчиков команд
     dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("balance", balance_command))
     dispatcher.add_handler(CommandHandler("set_balance", set_balance))
-    dispatcher.add_handler(CommandHandler("get_balance", get_balance))
-    dispatcher.add_handler(CommandHandler("support", support))
-
+    dispatcher.add_handler(CommandHandler("help", help_command))
+    
     # Запуск бота
     updater.start_polling()
+    
+    # Запуск бота до его отключения
     updater.idle()
 
 if __name__ == '__main__':
     main()
+    
